@@ -50,8 +50,9 @@ const defCfg=()=>({name:'',nif:'',irpf:15,basis:'dev',addr:'',cp:'',city:'',tel:
 S=S||{cfg:{},cl:[],inv:[],ex:[],rt:[]};S.rt=S.rt||[];S.cfg=Object.assign(defCfg(),S.cfg);
 const tp=t=>Object.assign({color:'#0f766e',font:'sans',title:'Factura',logo:'',lp:'l',q:1,p:1,d:0,v:1,addr:1,con:1,notes:'',foot:'',days:30,ls:'m'},t||S.cfg.tpl);
 let DB=null,DBE='conectando…';const last={},KEYS=['cfg','cl','inv','ex','rt'];
-async function save(){try{localStorage.setItem('fx2',JSON.stringify(S))}catch(e){}
- if(!DB)return;for(const k of KEYS){const j=JSON.stringify(S[k]);if(j!==last[k]){try{await DB.doc(k).set({v:S[k]});last[k]=j}catch(e){msg('No se pudo guardar en tu cuenta; queda copia en este navegador')}}}}
+let SQ=Promise.resolve();
+function save(){try{localStorage.setItem('fx2',JSON.stringify(S))}catch(e){}
+ return SQ=SQ.then(async()=>{if(!DB)return;for(const k of KEYS){const j=JSON.stringify(S[k]);if(j!==last[k]){try{await DB.doc(k).set({v:JSON.parse(j)});last[k]=j}catch(e){msg('No se pudo guardar en tu cuenta; queda copia en este navegador')}}}})}
 const rr=()=>{const a=(document.activeElement||{}).tagName||'';if(!/INPUT|TEXTAREA|SELECT/.test(a))render()};
 const stor=()=>DB?'☁️ Guardado en tu cuenta (sincronizado).':'💾 Solo en este navegador'+(DBE?' ('+DBE+')':'')+': puede perderse si se borran los datos del navegador.';
 (async()=>{try{const db=await claude.use('db'),u=await claude.use('user');if(!db||!u){DBE='sin acceso a la cuenta';rr();return}DB=db.collection('data/users/'+await u.id());
