@@ -44,7 +44,7 @@ nav{box-shadow:0 -1px 8px rgba(0,0,0,.06)}nav button{font-weight:500}
 </style></head><body><div id="app"></div><div id="t" hidden></div>
 <nav><button data-v="home" onclick="go('home')">🏠<br>Inicio</button><button data-v="inv" onclick="go('inv')">🧾<br>Facturas</button><button data-v="ex" onclick="go('ex')">💳<br>Gastos</button><button data-v="cl" onclick="go('cl')">👥<br>Clientes</button><button data-v="mas" onclick="go('mas')">⚙️<br>Más</button></nav>
 <script>
-const $=s=>document.querySelector(s),T=new Date().toISOString().slice(0,10);
+const $=s=>document.querySelector(s),hoy=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};let T=hoy();
 let S=null;try{S=JSON.parse(localStorage.getItem('fx2'))}catch(e){}
 const defCfg=()=>({name:'',nif:'',irpf:15,basis:'dev',addr:'',cp:'',city:'',tel:'',email:'',iban:'',tpl:{},veh:{fuel:'die',p:{},c:{}},series:[],sRect:'',sLast:''});
 S=S||{cfg:{},cl:[],inv:[],ex:[],rt:[]};S.rt=S.rt||[];S.cfg=Object.assign(defCfg(),S.cfg);
@@ -60,7 +60,7 @@ const stor=()=>DB?'☁️ Guardado en tu cuenta (sincronizado).':'💾 Solo en e
  const mc=(l,c)=>{const o=Object.assign({},l);for(const k in c){const v=c[k];if(v!==''&&v!=null&&!(typeof v=='object'&&!Array.isArray(v)&&!Object.keys(v).length))o[k]=v}return o};
  if(C.cfg){const t=mc(S.cfg.tpl||{},C.cfg.tpl||{});S.cfg=Object.assign(defCfg(),mc(S.cfg,C.cfg),{tpl:t})}
  ['cl','inv','ex','rt'].forEach(k=>{if(C[k]){const m=new Map();[...C[k],...S[k]].forEach(x=>{if(x&&x.id&&!m.has(x.id))m.set(x.id,x)});S[k]=[...m.values()]}});
- DBE='';await save();rr()}catch(e){DB=null;DBE=String(e&&(e.code||e.message)||e).slice(0,40);setTimeout(rr,0)}})();
+ fix();DBE='';await save();rr()}catch(e){DB=null;DBE=String(e&&(e.code||e.message)||e).slice(0,40);setTimeout(rr,0)}})();
 const eur=c=>(c/100).toLocaleString('es-ES',{style:'currency',currency:'EUR'});
 const uid=()=>Math.random().toString(36).slice(2,10);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -117,7 +117,7 @@ function hHome(){const c=S.cfg,first=(c.name||'').split(' ')[0];let pend=0,ven=0
  ${HT=='inv'?(ri.length?ri.map(i=>`<div class=it onclick="V='inv';SEL='${i.id}';render();scrollTo(0,0)"><div><b>${esc(i.num)}</b><br><small>${esc(cn(i))} · ${fd(i.date)}</small></div><div style="text-align:right"><b>${eur(calc(i).total)}</b><br>${badge(i)}</div></div>`).join(''):`<div class=emp><p class=mu>Crea facturas para empezar a registrar cobros.</p><button class=pri onclick="go('inv');newInv()">+ Crear factura</button></div>`)
  :(re.length?re.map(e=>`<div class=it onclick="V='ex';EE='${e.id}';render();scrollTo(0,0)"><div><b>${esc(e.t)}</b><br><small>${fd(e.date)}${e.prov?' · '+esc(e.prov):''}</small></div><b>${eur(e.sup?e.b:e.b+rd(e.b*e.iva/100))}</b></div>`).join(''):`<div class=emp><p class=mu>Aún no hay gastos.</p><button class=pri onclick="go('ex')">+ Registrar gasto</button></div>`)}</div></div>
  <p><small>${stor()} Cálculos orientativos; aún sin Verifactu ni SEPA.</small></p>`}
-function hInv(){if(D)return fInv();if(SEL)return detail(S.inv.find(i=>i.id==SEL));
+function hInv(){if(D)return fInv();if(SEL){const i=S.inv.find(i=>i.id==SEL);if(i)return detail(i);SEL=null}
  return `<div class=row><h2>Facturas</h2><button class=pri onclick="newInv()">+ Nueva</button></div>`+filt()+charts()+(fl().length?fl().reverse().map(i=>`<div class=card onclick="SEL='${i.id}';render()"><div class=row><b>${i.num}</b><b>${eur(calc(i).total)}</b></div><div class=row><small>${esc(cn(i))} · ${fd(i.date)}</small>${badge(i)}</div></div>`).join(''):`<p class=mu>${S.inv.length?'No hay facturas de este cliente.':'Aún no hay facturas. Crea primero un cliente.'}</p>`)}
 const fl=()=>S.inv.filter(i=>!FC||i.cl==FC);
 function filt(){if(!S.inv.length)return'';let t=0,p=0;for(const i of fl()){if(i.rect||i.voided)continue;const c=calc(i).total;t+=c;p+=Math.max(0,c-i.paid)}
@@ -149,7 +149,7 @@ function detail(i){const c=calc(i),o=S.inv.find(x=>x.id==i.of);
 function pay(id){const i=S.inv.find(x=>x.id==id),a=cents($('#pa').value),t=calc(i).total;if(a<=0)return msg('Indica un importe');if(i.paid+a>t)return msg('El cobro supera el total');i.paid+=a;i.pd=i.paid>=t?T:null;save();render()}
 function paidAll(id,y){const i=S.inv.find(x=>x.id==id);i.paid=y?calc(i).total:0;i.pd=y?T:null;save();render()}
 function rect(id){const o=S.inv.find(i=>i.id==id);if(!o||o.rect||o.voided)return;const r=JSON.parse(JSON.stringify(o));Object.assign(r,{id:uid(),num:takeNum(S.cfg.sRect),date:T,due:T,rect:true,of:o.id,paid:0,pd:null,lines:o.lines.map(l=>({...l,q:-l.q})),sup:o.sup.map(s=>({...s,c:-s.c}))});o.voided=true;S.inv.push(r);save();SEL=r.id;render()}
-function hEx(){const e=S.ex.find(x=>x.id==EE)||{},sp=!!e.sup;
+function hEx(){if(EE&&!S.ex.some(x=>x.id==EE))EE=null;const e=S.ex.find(x=>x.id==EE)||{},sp=!!e.sup;
  return `<h2>Gastos</h2><div class=card>${EE?'<b>Editando gasto</b>':''}<input id=eT placeholder="Concepto" value="${esc(e.t)}"><input id=eP placeholder="Proveedor (opcional)" value="${esc(e.prov)}"><div class=g2><label>Fecha<input id=eD type=date value="${e.date||T}"></label><label>Importe (base sin IVA) €<input id=eB inputmode=decimal value="${e.b!=null?String(e.b/100).replace('.',','):''}"></label></div>
  <label class=ck><input id=eS type=checkbox ${sp?'checked':''} onchange="$('#eN').hidden=!this.checked;$('#eV').hidden=this.checked">Suplido (importe total pagado por cuenta del cliente)</label><br>
  <div id=eV class=g2 ${sp?'hidden':''}><label>IVA %<select id=eI>${[21,10,4,0].map(r=>`<option ${r==(e.iva??21)?'selected':''}>${r}</option>`).join('')}</select></label><label>Deducible %<input id=eDd inputmode=decimal value="${e.d??100}"></label></div>
@@ -159,7 +159,7 @@ function addEx(){const t=$('#eT').value.trim(),b=cents($('#eB').value),sup=$('#e
  const d={t,prov:$('#eP').value.trim(),date:$('#eD').value||T,b,iva:+$('#eI').value,d:Math.min(100,Math.max(0,num($('#eDd').value))),sup,cl:sup?$('#eC').value:''},o=S.ex.find(x=>x.id==EE);
  if(o){if(o.billed&&(!sup||d.cl!=o.cl||d.b!=o.b))msg('Ojo: este suplido ya está en una factura, que no cambia');else msg('Gasto actualizado');Object.assign(o,d)}else{S.ex.push(Object.assign({id:uid(),billed:null},d));msg('Gasto guardado')}EE=null;save();render()}
 function delE(id){const e=S.ex.find(x=>x.id==id);if(!sure('de'+id,'¿Borrar el gasto «'+e.t+'»?'+(e.billed?' Ya está en una factura, que no cambiará.':'')))return;S.ex=S.ex.filter(x=>x.id!=id);save();render();msg('Gasto borrado')}
-function hCl(){const e=S.cl.find(c=>c.id==EC)||{},v=k=>esc(e[k]);
+function hCl(){if(EC&&!S.cl.some(c=>c.id==EC))EC=null;const e=S.cl.find(c=>c.id==EC)||{},v=k=>esc(e[k]);
  return `<h2>Clientes</h2><div class=card>${EC?'<b>Editando cliente</b>':''}<input id=cN placeholder="Nombre o razón social" value="${v('name')}"><input id=cL placeholder="Alias (p. ej. grupo musical)" value="${v('alias')}"><input id=cF placeholder="NIF/CIF/NIE" value="${v('nif')}"><input id=cA placeholder="Dirección" value="${v('addr')}"><div class=g2><input id=cP inputmode=numeric placeholder="Código postal" value="${v('cp')}"><input id=cM placeholder="Municipio" value="${v('mun')}"></div><input id=cC placeholder="Ciudad" value="${v('city')}"><input id=cT type=tel placeholder="Teléfono (opcional)" value="${v('tel')}"><input id=cE type=email placeholder="Email (opcional)" value="${v('email')}"><input id=cI placeholder="IBAN (opcional)" value="${v('iban')}"><label class=ck><input id=cR type=checkbox ${e.irpf?'checked':''}>Aplicar retención de IRPF por defecto</label><br><div class=row><button class=pri onclick="addCl()">${EC?'Guardar cambios':'Guardar cliente'}</button>${EC?`<button onclick="EC=null;render()">Cancelar</button>`:''}</div><div id=cm class=bad></div></div>
  ${S.cl.map(c=>`<div class=card><div class=row><b>${esc(c.alias||c.name)}</b><small>${esc(c.nif)}</small></div>${c.alias?`<div>${esc(c.name)}</div>`:''}<small>${esc([c.addr,[c.cp,c.mun,c.city].filter(Boolean).join(' ')].filter(Boolean).join(', '))} ${c.iban?'· '+esc(c.iban.slice(0,4))+' **** '+esc(c.iban.slice(-4)):''}</small><div class=row><button onclick="EC='${c.id}';render();scrollTo(0,0)">Editar</button><button onclick="delC('${c.id}')">Borrar</button></div></div>`).join('')}`}
 function addCl0(){const name=$('#cN').value.trim(),nif=$('#cF').value.trim(),iban=$('#cI').value.replace(/\s/g,'').toUpperCase(),cp=$('#cP').value.trim();if(!name)return cm('Indica el nombre');if(!nifOk(nif)&&NW!=nif){NW=nif;return cm('El NIF no parece válido. Revísalo o pulsa Guardar otra vez para guardarlo igualmente')}if(cp&&!/^\d{5}$/.test(cp))return cm('Código postal no válido (5 cifras)');if(iban&&!ibanOk(iban))return cm('IBAN no válido');
@@ -254,6 +254,14 @@ function serSet(id,k,v){const s=S.cfg.series.find(x=>x.id==id);if(k=='n')s.n=Mat
  if(k!='name'&&S.inv.some(i=>i.num==s.p+String(s.n).padStart(s.w,'0')))msg('Ese número ya existe: se usará el siguiente libre');save();render()}
 function serAdd(){S.cfg.series.push({id:uid(),name:'Nueva serie',p:'B-'+T.slice(0,4)+'-',n:1,w:4});save();render()}
 function serDel(id){const c=S.cfg;c.series=c.series.filter(x=>x.id!=id);if(c.sLast==id)c.sLast=defSer();save();render()}
+function fix(){const c=S.cfg,O=x=>x&&typeof x=='object'&&!Array.isArray(x),A=x=>Array.isArray(x)?x.filter(O):[],D8=d=>typeof d=='string'&&/^\d{4}-\d\d-\d\d/.test(d);
+ if(!O(c.tpl))c.tpl={};if(!O(c.veh))c.veh={};const v=c.veh;if(!FU[v.fuel])v.fuel='die';if(!O(v.p))v.p={};if(!O(v.c))v.c={};c.series=A(c.series);c.irpf=+c.irpf||0;
+ KEYS.slice(1).forEach(k=>{S[k]=A(S[k]);S[k].forEach(x=>{if(!x.id)x.id=uid()})});
+ S.cl.forEach(x=>{x.name=String(x.name??'')});
+ S.inv.forEach(i=>{i.num=String(i.num??'');if(!D8(i.date))i.date=T;if(!D8(i.due))i.due=i.date;i.lines=A(i.lines);i.lines.forEach(l=>{l.t=String(l.t??'');l.q=+l.q||0;l.p=Math.round(+l.p||0);l.d=+l.d||0;l.iva=+l.iva||0});i.sup=A(i.sup);i.sup.forEach(x=>{x.t=String(x.t??'');x.c=Math.round(+x.c||0)});i.paid=Math.round(+i.paid||0);i.irpf=+i.irpf||0;if(!O(i.snap))i.snap={name:''};if(!O(i.em))i.em={}});
+ S.ex.forEach(e=>{e.t=String(e.t??'');if(!D8(e.date))e.date=T;e.b=Math.round(+e.b||0);e.iva=+(e.iva??21)||0;e.d=+(e.d??100)||0});
+ S.rt.forEach(r=>{r.km=+r.km||0})}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='visible'&&hoy()!=T){T=hoy();rr()}});
 const sure=(k,t)=>{if(ASK==k){ASK='';return true}ASK=k;msg(t+' Pulsa otra vez para confirmar.');setTimeout(()=>{if(ASK==k)ASK=''},6000);return false};
 function editInv(id){const i=S.inv.find(x=>x.id==id);D=JSON.parse(JSON.stringify({cl:i.cl,date:i.date,ivaOn:i.ivaOn,irpfOn:i.irpfOn,irpf:i.irpf,lines:i.lines,sup:i.sup,notes:i.notes||'',sv:i.sv||{m:'n',a:'',b:''},ser:'',editId:i.id,num:i.num}));if(!S.cl.some(c=>c.id==D.cl))D.cl='';render();scrollTo(0,0)}
 function saveEdit(c){const o=S.inv.find(x=>x.id==D.editId);if(!o)return msg('No encuentro la factura');
@@ -278,5 +286,5 @@ function hRes(){const r=resCalc(R.t,R.p,S.cfg.basis),row=(a,b,k)=>`<div class="r
  <div class=card>${row('Ingresos (sin IVA ni suplidos)',r.ing)}${row('Gastos deducibles',r.gas)}${row('Beneficio',r.ben,r.ben<0?'bad':'ok')}</div>
  <div class=card>${row('IVA repercutido',r.rep)}${row('IVA soportado deducible',r.sop)}${row('IVA a ingresar (estimado)',r.rep-r.sop)}${row('IRPF retenido por clientes (pago a cuenta)',r.ret)}</div>
  <p><small>Estimación orientativa, no es una presentación oficial.</small></p>`}
-render();
+fix();render();
 </script></body></html>
