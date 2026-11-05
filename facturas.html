@@ -95,7 +95,10 @@ const clSel=(id,fn)=>`<select ${fn?`onchange="${fn}"`:'id=eC'}><option value="">
 function sumHtml(i,c){const r=(a,b,k)=>`<div class=row${k?' style="font-weight:700"':''}><span>${a}</span><span>${b}</span></div>`;
  return r('Base imponible',eur(c.base))+Object.keys(c.v).map(k=>r(`IVA ${k} % s/ ${eur(c.b[k])}`,eur(c.v[k]))).join('')+(i.irpfOn?r(`IRPF −${i.irpf} %`,(c.irpf?'−':'')+eur(c.irpf)):'')+(c.sup?r('Suplidos (fuera de base)',eur(c.sup)):'')+r('Total a cobrar',eur(c.total),1)}
 const upd=()=>{$('#sum').innerHTML=sumHtml(D,calc(D))};
-function render(){ensureSer();$('#app').className=V;$('#app').innerHTML={home:hHome,inv:hInv,ex:hEx,cl:hCl,res:hRes,km:hKm,ser:hSer,mas:hMas,dat:hDat,tpl:hTpl,reg:hReg}[V]();document.querySelectorAll('nav button').forEach(b=>{const on=b.dataset.v==(['res','dat','tpl','reg','km','ser'].includes(V)?'mas':V);b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});a11y()}
+function render(){ensureSer();$('#app').className=V;$('#app').innerHTML={home:hHome,inv:hInv,ex:hEx,cl:hCl,res:hRes,km:hKm,ser:hSer,mas:hMas,dat:hDat,tpl:hTpl,reg:hReg}[V]();document.querySelectorAll('nav button').forEach(b=>{const on=b.dataset.v==(['res','dat','tpl','reg','km','ser'].includes(V)?'mas':V);b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});a11y();hist()}
+let HS=[],HP=null;
+function hist(){const k=[V,SEL||'',D?D.editId||'n':'',EE||'',EC||''].join('|');if(HP&&HP.k!=k&&!HP.D){try{history.pushState({fx:HS.length+1},'');HS.push(HP)}catch(e){}}HP={k,V,SEL,EE,EC,D}}
+addEventListener('popstate',()=>{const s=HS.pop();if(!s)return;HP=null;V=s.V;SEL=s.SEL;EE=s.EE;EC=s.EC;D=null;render();scrollTo(0,0)});
 function a11y(){const a=$('#app');a.querySelectorAll('[onclick]:not(button)').forEach(e=>{e.tabIndex=0;if(e.tagName!='TR')e.setAttribute('role','button')});a.querySelectorAll('input:not([aria-label]),textarea:not([aria-label])').forEach(e=>{if(!e.closest('label')&&e.placeholder)e.setAttribute('aria-label',e.placeholder)})}
 document.addEventListener('keydown',e=>{const t=e.target;if((e.key=='Enter'||e.key==' ')&&t.matches&&t.matches('#app [onclick]:not(button,input,select,textarea)')){e.preventDefault();t.click()}});
 const go=v=>{V=v;D=null;SEL=null;EC=null;EE=null;render();scrollTo(0,0)};
